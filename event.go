@@ -1,7 +1,11 @@
-package main
+package mis
 
 import (
 	tbox "github.com/nsf/termbox-go"
+)
+
+const (
+	EventUpdate tbox.EventType = tbox.EventNone + 1
 )
 
 //return true if need to pass on
@@ -16,12 +20,15 @@ func (nulHend) hend(tbox.Event) bool {
 }
 
 type splitHend struct {
-	mouse func(x, y int, k tbox.Key, drag bool)
-	key   func(k tbox.Key, Mod tbox.Modifier, ch rune)
+	mouse  func(x, y int, k tbox.Key, drag bool)
+	key    func(k tbox.Key, Mod tbox.Modifier, ch rune)
+	update func()
 }
 
 func (s splitHend) hend(e tbox.Event) bool {
-	if e.Type == tbox.EventMouse {
+	if e.Type == EventUpdate {
+		s.update()
+	} else if e.Type == tbox.EventMouse {
 		s.mouse(e.MouseX, e.MouseY, e.Key, e.Mod == 2)
 	} else if e.Type == tbox.EventKey {
 		s.key(e.Key, e.Mod, e.Ch)
@@ -30,17 +37,24 @@ func (s splitHend) hend(e tbox.Event) bool {
 }
 
 func OnMouse(b Elem, h func(x, y int, k tbox.Key, d bool)) Elem {
-	if s, ok := b.h().(splitHend); ok {
-		s.mouse = h
-		b.setH(s)
+	if s, ok := b.H().(splitHend); ok {
+		s.mouse = func(x, y int, k tbox.Key, d bool) {
+			if b.Pl().In(x, y) {
+				h(x, y, k, d)
+			}
+		}
+		b.SetH(s)
 	}
-	b.setH(splitHend{
+	b.SetH(splitHend{
 		func(x, y int, k tbox.Key, d bool) {
-			if b.pl().in(x, y) {
+			if b.Pl().In(x, y) {
 				h(x, y, k, d)
 			}
 		},
 		func(k tbox.Key, Mod tbox.Modifier, ch rune) {
+
+		},
+		func() {
 
 		},
 	})
@@ -48,17 +62,36 @@ func OnMouse(b Elem, h func(x, y int, k tbox.Key, d bool)) Elem {
 }
 
 func OnKey(b Elem, h func(k tbox.Key, Mod tbox.Modifier, ch rune)) Elem {
-	if s, ok := b.h().(splitHend); ok {
+	if s, ok := b.H().(splitHend); ok {
 		s.key = h
-		b.setH(s)
+		b.SetH(s)
 	}
-	b.setH(splitHend{
+	b.SetH(splitHend{
+		func(x, y int, k tbox.Key, d bool) {
+
+		},
+		h,
+		func() {
+
+		},
+	})
+	return b
+}
+
+func OnUpdate(b Elem, h func()) Elem {
+	if s, ok := b.H().(splitHend); ok {
+		s.update = h
+		b.SetH(s)
+	}
+	b.SetH(splitHend{
 		func(x, y int, k tbox.Key, d bool) {
 
 		},
 		func(k tbox.Key, Mod tbox.Modifier, ch rune) {
-			h(k, Mod, ch)
+
 		},
+
+		h,
 	})
 	return b
 }

@@ -1,15 +1,17 @@
-package main
+package mis
 
 import (
-	"fmt"
+	//"fmt"
+	//"os"
 	//"math"
 	//"sync"
+	"context"
 	"time"
 
 	tbox "github.com/nsf/termbox-go"
 )
 
-func main() {
+func Main() {
 	/*i := 0
 	s := Sig(50)
 	m := MovArc(3, 3, 3, 30)
@@ -81,67 +83,86 @@ func main() {
 
 }
 
-func Rend(fps int, mainElem Elem, ctx context.Context) {
-	tbox.SetInputMode( /*termbox.InputEsc |*/ tbox.InputMouse)
-	tbox.SetOutputMode(tbox.Output256)
-	tike = time.NewTicker(time.Second / fps)
+func Rend(fps int, mainElem Elem, ctx context.Context) error {
+	//logf, err := os.Create("log2.md")
+	//fmt.Print(err)
+	tick := time.NewTicker(time.Second / time.Duration(fps))
+	call := true
+	i := 0
+	fun := func() bool {
+		return false
+	}
+	ch := make(chan tbox.Event)
+	go func() {
+		for {
+			select {
+			case ch <- tbox.PollEvent():
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	//tEv := time.Now()
 	for {
+		//t1 := time.Now()
 		select {
-		case <-func() chan struct{} {
-			ch := make(chan struct{})
-			go func() {
-				evn := tbox.PollEvent()
-				mainElem.event(evn)
-				ch <- struct{}{}
-			}()
-			//log.Text = fmt.Sprint("event:", evn)
-			return ch
-		}():
+		case env := <-ch:
+			//fmt.Fprintf(logf, "EVENT:%15v\n", time.Now().Sub(tEv))
+			//tEv = time.Now()
+			mainElem.Event(env)
 		case <-tick.C:
+			mainElem.Event(tbox.Event{
+				Type: EventUpdate,
+			})
 		case <-ctx.Done():
 			return ctx.Err()
 		}
+		//t2 := time.Now()
 		w, h := tbox.Size()
 		bg := tbox.Attribute(240)
 		tbox.Clear(0, bg)
 		if call && i > 40 {
-			log.Text = fmt.Sprint("frame:", i)
 			call = fun()
 		}
-		for _, c := range mainElem.drow(w, h, 0, 0, bg) {
-			tbox.SetCell(c.x, c.y, c.Ch, c.Fg, c.Bg)
-		}
-		tbox.Flush()
+		DROW(mainElem, bg, w, h)
+		//fmt.Fprintf(logf, "LOOP:%15v|%15v\n", time.Now().Sub(t1), time.Now().Sub(t2))
 	}
 }
 
-type vlist struct {
-	baseElemNode
+func DROW(mainElem Elem, bg tbox.Attribute, w, h int) {
+	for _, c := range mainElem.Drow(w, h, 0, 0, bg) {
+		tbox.SetCell(c.X, c.Y, c.Ch, c.Fg, c.Bg)
+	}
+	tbox.Flush()
+}
+
+type Vlist struct {
+	BaseElemNode
 	size int
 }
 
-func (v *vlist) drow(w, h, x, y int, bg tbox.Attribute) []Cell {
-	v.p = Place{x, y, w, h}
+func (v *Vlist) Drow(w, h, x, y int, bg tbox.Attribute) []Cell {
+	v.P = Place{x, y, w, h}
 	cl := make([]Cell, 0)
-	for i, el := range v.s {
+	for i, el := range v.S {
 		if y+i*v.size > h {
 			break
 		}
-		cl = append(cl, el.drow(w, v.size, x, y+i*v.size, bg)...)
+		cl = append(cl, el.Drow(w, v.size, x, y+i*v.size, bg)...)
 	}
 	return cl
 }
 
-func NewVlist(size int) Elem {
-	return &vlist{newBE(), size}
+func NewVlist(size int) *Vlist {
+	return &Vlist{NewBE(), size}
 }
 
-func (c *cC) drow(w, h, x, y int, bg tbox.Attribute) []Cell {
-	c.p = Place{x, y, w, h}
+func (c *cC) Drow(w, h, x, y int, bg tbox.Attribute) []Cell {
+	c.P = Place{x, y, w, h}
 	if !(w > 1 && h > 1) {
 		return nil
 	}
-	cl := c.el.drow(w, h, x, y, c.color)
+	cl := c.el.Drow(w, h, x, y, c.color)
 	for i := 0; i < w-1; i++ {
 		cl = append(cl, Cell{tbox.Cell{rune(9608), c.color, c.color}, x + i, y})
 		cl = append(cl, Cell{tbox.Cell{rune(9608), c.color, c.color}, x + i, y + h - 1})
@@ -160,8 +181,8 @@ func (c *cC) drow(w, h, x, y int, bg tbox.Attribute) []Cell {
 }
 
 func NewCC(el Elem, bg tbox.Attribute) Elem {
-	b := newBE()
-	b.s = append(b.s, el)
+	b := NewBE()
+	b.S = append(b.S, el)
 	return &cC{b, bg, el}
 }
 
@@ -188,7 +209,7 @@ func NewButton(txt string, f func()) Elem {
 			a.I = 0
 		}()
 	}
-	return F(Place{x: 0, y: 0, w: len(txt) + 2, h: 3}, OnMouse(a, g))
+	return F(Place{X: 0, Y: 0, W: len(txt) + 2, H: 3}, OnMouse(a, g))
 }
 
 func NewList(a ...string) Elem {
@@ -200,7 +221,7 @@ func NewList(a ...string) Elem {
 		)
 		an.I = 0
 		t := NewText(txt)
-		l.attech(
+		l.Attech(
 			F(
 				Place{0, 0, -1, 3},
 				OnMouse(
@@ -267,7 +288,7 @@ func NewSwitch() switchEl {
 				go func() {
 					sEl.B = !sEl.B
 					if k == tbox.MouseLeft && !drag {
-						f.p1.x = 2 - f.p1.x
+						f.P1.X = 2 - f.P1.X
 					}
 				}()
 			},
@@ -307,7 +328,7 @@ func NewListOne(a ...string) Elem {
 		)
 		an.I = 0
 		t := NewText(txt)
-		l.attech(
+		l.Attech(
 			F(
 				Place{0, 0, -1, 3},
 				OnMouse(

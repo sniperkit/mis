@@ -1,89 +1,90 @@
-package main
+package mis
 
 import (
+	"bytes"
 	tbox "github.com/nsf/termbox-go"
 )
 
 type Elem interface {
-	father() Elem
-	setFather(Elem)
-	son() []Elem
-	attech(Elem)
-	event(tbox.Event)
-	h() EventHandler
-	setH(EventHandler)
-	pl() Place
-	drow(w, h, x, y int, bg tbox.Attribute) []Cell
+	Father() Elem
+	SetFather(Elem)
+	Son() []Elem
+	Attech(Elem)
+	Event(tbox.Event)
+	H() EventHandler
+	SetH(EventHandler)
+	Pl() Place
+	Drow(w, h, x, y int, bg tbox.Attribute) []Cell
 }
 
-type Place struct{ x, y, w, h int }
+type Place struct{ X, Y, W, H int }
 
-func (e Place) in(x, y int) bool {
-	return x >= e.x && y >= e.y && x < e.x+e.w && y < e.y+e.h
+func (e Place) In(x, y int) bool {
+	return x >= e.X && y >= e.Y && x < e.X+e.W && y < e.Y+e.H
 }
 
 type Cell struct {
 	tbox.Cell
-	x, y int
+	X, Y int
 }
 
-type baseElemNode struct {
-	s  []Elem
+type BaseElemNode struct {
+	S  []Elem
 	f  Elem
 	he EventHandler
-	p  Place
+	P  Place
 }
 
-func newBE() baseElemNode {
-	return baseElemNode{make([]Elem, 0), nil, nulHend{}, Place{0, 0, 0, 0}}
+func NewBE() BaseElemNode {
+	return BaseElemNode{make([]Elem, 0), nil, nulHend{}, Place{0, 0, 0, 0}}
 }
 
-func (b *baseElemNode) son() []Elem {
-	return b.s
+func (b *BaseElemNode) Son() []Elem {
+	return b.S
 }
 
-func (b *baseElemNode) attech(e Elem) {
-	b.s = append(b.s, e)
+func (b *BaseElemNode) Attech(e Elem) {
+	b.S = append(b.S, e)
 }
 
-func (b *baseElemNode) father() Elem {
+func (b *BaseElemNode) Father() Elem {
 	return b.f
 }
 
-func (b *baseElemNode) setFather(e Elem) {
+func (b *BaseElemNode) SetFather(e Elem) {
 	b.f = e
 }
 
-func (b *baseElemNode) setH(h EventHandler) {
+func (b *BaseElemNode) SetH(h EventHandler) {
 	b.he = h
 }
 
-func (b *baseElemNode) h() EventHandler {
+func (b *BaseElemNode) H() EventHandler {
 	return b.he
 }
 
-func (b *baseElemNode) pl() Place {
-	return b.p
+func (b *BaseElemNode) Pl() Place {
+	return b.P
 }
 
-func (b *baseElemNode) event(e tbox.Event) {
-	b.h().hend(e)
+func (b *BaseElemNode) Event(e tbox.Event) {
+	b.H().hend(e)
 	//if bo {
-	for _, el := range b.s {
-		el.event(e)
+	for _, el := range b.S {
+		el.Event(e)
 	}
 	//}
 }
 
 type Color struct {
-	baseElemNode
+	BaseElemNode
 	C  tbox.Attribute
 	el Elem
 }
 
-func (c *Color) drow(w, h, x, y int, bg tbox.Attribute) []Cell {
-	c.p = Place{x, y, w, h}
-	cl := c.el.drow(w, h, x, y, c.C)
+func (c *Color) Drow(w, h, x, y int, bg tbox.Attribute) []Cell {
+	c.P = Place{x, y, w, h}
+	cl := c.el.Drow(w, h, x, y, c.C)
 	/*for i := 0; i < w; i++ {
 		cl = append(cl, Cell{tbox.Cell{rune(219), c.color, c.color}, x + i, y})
 		cl = append(cl, Cell{tbox.Cell{rune(219), c.color, c.color}, x + i, y + h - 1})
@@ -96,14 +97,14 @@ func (c *Color) drow(w, h, x, y int, bg tbox.Attribute) []Cell {
 }
 
 func C(el Elem, bg tbox.Attribute) *Color {
-	return &Color{newBE(), bg, el}
+	return &Color{NewBE(), bg, el}
 }
 
 type nulElem struct {
-	baseElemNode
+	BaseElemNode
 }
 
-func (nulElem) drow(w, h, x, y int, bg tbox.Attribute) []Cell {
+func (nulElem) Drow(w, h, x, y int, bg tbox.Attribute) []Cell {
 	cl := make([]Cell, 0)
 	for i := x; i < x+w; i++ {
 		for j := y; j < y+h; j++ {
@@ -114,37 +115,37 @@ func (nulElem) drow(w, h, x, y int, bg tbox.Attribute) []Cell {
 }
 
 func Fill() Elem {
-	return &nulElem{newBE()}
+	return &nulElem{NewBE()}
 }
 
 type nulElem2 struct {
-	baseElemNode
+	BaseElemNode
 }
 
-func (nulElem2) drow(w, h, x, y int, bg tbox.Attribute) []Cell {
+func (nulElem2) Drow(w, h, x, y int, bg tbox.Attribute) []Cell {
 	cl := make([]Cell, 0)
 	return cl
 }
 
 func Nul() Elem {
-	return &nulElem2{newBE()}
+	return &nulElem2{NewBE()}
 }
 
 type cC struct {
-	baseElemNode
+	BaseElemNode
 	color tbox.Attribute
 	el    Elem
 }
 
 type Frame struct {
-	baseElemNode
-	p1 Place
+	BaseElemNode
+	P1 Place
 	el Elem
 }
 
-func (f *Frame) drow(w, h, x, y int, bg tbox.Attribute) []Cell {
-	f.p = Place{x, y, w, h}
-	return f.el.drow(min(w-f.p1.x, f.p1.w), min(h-f.p1.y, f.p1.h), x+f.p1.x, y+f.p1.y, bg)
+func (f *Frame) Drow(w, h, x, y int, bg tbox.Attribute) []Cell {
+	f.P = Place{x, y, w, h}
+	return f.el.Drow(min(w-f.P1.X, f.P1.W), min(h-f.P1.Y, f.P1.H), x+f.P1.X, y+f.P1.Y, bg)
 }
 
 func min(x, y int) int {
@@ -158,71 +159,92 @@ func min(x, y int) int {
 }
 
 func F(p Place, el Elem) *Frame {
-	b := newBE()
-	b.s = append(b.s, el)
+	b := NewBE()
+	b.S = append(b.S, el)
 	return &Frame{b, p, el}
 }
 
+type PFrame struct {
+	BaseElemNode
+	P1     Place
+	px, py float64
+	x, y   int
+	el     Elem
+}
+
+func (f *PFrame) Drow(w, h, x, y int, bg tbox.Attribute) []Cell {
+	f.P = Place{x, y, w, h}
+	f.P1.X = int(float64(w)*f.px) + x + f.x
+	f.P1.Y = int(float64(h)*f.py) + y + f.y
+	return f.el.Drow(min(w-f.P1.X, f.P1.W), min(h-f.P1.Y, f.P1.H), x+f.P1.X, y+f.P1.Y, bg)
+}
+
+func P(px, py float64, x, y int, w, h int, el Elem) *PFrame {
+	b := NewBE()
+	b.S = append(b.S, el)
+	return &PFrame{b, Place{W: w, H: h}, px, py, x, y, el}
+}
+
 type d struct {
-	baseElemNode
-	drowf func(w, h, x, y int, bg tbox.Attribute) []Cell
+	BaseElemNode
+	Drowf func(w, h, x, y int, bg tbox.Attribute) []Cell
 }
 
-func (dr *d) drow(w, h, x, y int, bg tbox.Attribute) []Cell {
-	dr.p = Place{x, y, w, h}
-	return dr.drowf(w, h, x, y, bg)
+func (dr *d) Drow(w, h, x, y int, bg tbox.Attribute) []Cell {
+	dr.P = Place{x, y, w, h}
+	return dr.Drowf(w, h, x, y, bg)
 }
 
-func D(drow func(w, h, x, y int, bg tbox.Attribute) []Cell) Elem {
-	return &d{newBE(), drow}
+func D(Drow func(w, h, x, y int, bg tbox.Attribute) []Cell) Elem {
+	return &d{NewBE(), Drow}
 }
 
 type mList struct {
-	baseElemNode
+	BaseElemNode
 }
 
-func (m *mList) drow(w, h, x, y int, bg tbox.Attribute) []Cell {
-	m.p = Place{x, y, w, h}
+func (m *mList) Drow(w, h, x, y int, bg tbox.Attribute) []Cell {
+	m.P = Place{x, y, w, h}
 	cl := make([]Cell, 0)
-	for _, el := range m.s {
-		cl = append(cl, el.drow(w, h, x, y, bg)...)
+	for _, el := range m.S {
+		cl = append(cl, el.Drow(w, h, x, y, bg)...)
 	}
 	return cl
 }
 
 func MList(l ...Elem) Elem {
-	be := newBE()
-	be.s = l
+	be := NewBE()
+	be.S = l
 	return &mList{be}
 }
 
 type AnimEl struct {
-	baseElemNode
+	BaseElemNode
 	e []Elem
 	I int
 }
 
-func (a *AnimEl) drow(w, h, x, y int, bg tbox.Attribute) []Cell {
-	a.p = Place{x, y, w, h}
-	a.s = append([]Elem{}, a.e[a.I])
-	return a.e[a.I].drow(w, h, x, y, bg)
+func (a *AnimEl) Drow(w, h, x, y int, bg tbox.Attribute) []Cell {
+	a.P = Place{x, y, w, h}
+	a.S = append([]Elem{}, a.e[a.I])
+	return a.e[a.I].Drow(w, h, x, y, bg)
 }
 
 func Anim(e ...Elem) *AnimEl {
-	return &AnimEl{newBE(), e, 0}
+	return &AnimEl{NewBE(), e, 0}
 }
 
 type Text struct {
-	baseElemNode
+	BaseElemNode
 	Text string
 }
 
 func NewText(txt string) *Text {
-	return &Text{newBE(), txt}
+	return &Text{NewBE(), txt}
 }
 
-func (t *Text) drow(w, h, x, y int, bg tbox.Attribute) []Cell {
-	t.p = Place{x, y, w, h}
+func (t *Text) Drow(w, h, x, y int, bg tbox.Attribute) []Cell {
+	t.P = Place{x, y, w, h}
 	cl := make([]Cell, 0)
 	i, r := 0, ' '
 	for i, r = range t.Text {
@@ -234,6 +256,38 @@ func (t *Text) drow(w, h, x, y int, bg tbox.Attribute) []Cell {
 	i++
 	for ; i < w; i++ {
 		cl = append(cl, Cell{tbox.Cell{' ', bg, bg}, x + i, y})
+	}
+	return cl
+}
+
+type Paragraph struct {
+	BaseElemNode
+	Text *bytes.Buffer
+}
+
+func NewParagraph(txt string) *Paragraph {
+	return &Paragraph{NewBE(), bytes.NewBufferString(txt)}
+}
+
+func (t *Paragraph) Drow(w, h, x, y int, bg tbox.Attribute) []Cell {
+	t.P = Place{x, y, w, h}
+	cl := make([]Cell, 0)
+	l, j := 0, 0
+	for _, r := range t.Text.String() {
+		if j > w {
+			j = 0
+			l++
+		}
+		if r == '\n' {
+			j = 0
+			l++
+			continue
+		}
+		if l > h {
+			break
+		}
+		cl = append(cl, Cell{tbox.Cell{r, 0, bg}, x + j, y + l})
+		j++
 	}
 	return cl
 }
